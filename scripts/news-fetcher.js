@@ -9,7 +9,34 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const serviceAccount = JSON.parse(fs.readFileSync(path.join(__dirname, '../keys/apptalepify-14dbc-firebase-adminsdk-fbsvc-927bdbad28.json'), 'utf8'));
+// Service account: prefer env (GitHub Actions), fallback to local file for dev
+let serviceAccount = null;
+const envSa = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (envSa) {
+  try {
+    serviceAccount = JSON.parse(envSa);
+  } catch {
+    try {
+      const decoded = Buffer.from(envSa, 'base64').toString('utf8');
+      serviceAccount = JSON.parse(decoded);
+    } catch (e) {
+      console.error('FIREBASE_SERVICE_ACCOUNT parsing failed. Provide raw JSON or base64 JSON.');
+      throw e;
+    }
+  }
+} else {
+  const keysDir = path.join(__dirname, '../keys');
+  if (fs.existsSync(keysDir)) {
+    const files = fs.readdirSync(keysDir).filter(f => f.endsWith('.json'));
+    if (files.length > 0) {
+      const p = path.join(keysDir, files[0]);
+      serviceAccount = JSON.parse(fs.readFileSync(p, 'utf8'));
+    }
+  }
+  if (!serviceAccount) {
+    throw new Error('Missing service account. Set FIREBASE_SERVICE_ACCOUNT env to full JSON.');
+  }
+}
 
 // --- config (env-overridable) ---
 const MAX_OG_FETCH = Number(process.env.MAX_OG_FETCH || '80');
@@ -19,7 +46,7 @@ const USER_AGENT = process.env.NEWS_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0;
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    projectId: serviceAccount.project_id,
+    projectId: process.env.FIREBASE_PROJECT_ID || serviceAccount.project_id,
   });
 }
 const db = admin.firestore();
