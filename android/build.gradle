@@ -1,0 +1,82 @@
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "26.1.10909125"
+    }
+    repositories {
+        google()
+        mavenCentral()
+        // Mapbox SDK registry (for @rnmapbox/maps) - optional, enabled only if token provided
+        def mapboxToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+        if (!mapboxToken && project.hasProperty('MAPBOX_DOWNLOADS_TOKEN')) {
+            mapboxToken = project.property('MAPBOX_DOWNLOADS_TOKEN')
+        }
+        if (mapboxToken) {
+            maven {
+                url 'https://api.mapbox.com/downloads/v2/releases/maven'
+                credentials {
+                    username = 'mapbox'
+                    password = mapboxToken
+                }
+                authentication { basic(BasicAuthentication) }
+            }
+        }
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.6.0")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("com.google.gms:google-services:4.4.2")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+// Ensure all subprojects (including rnmapbox_maps) can resolve Mapbox artifacts
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        def mapboxToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+        if (!mapboxToken && project.hasProperty('MAPBOX_DOWNLOADS_TOKEN')) {
+            mapboxToken = project.property('MAPBOX_DOWNLOADS_TOKEN')
+        }
+        if (mapboxToken) {
+            maven {
+                url 'https://api.mapbox.com/downloads/v2/releases/maven'
+                credentials {
+                    username = 'mapbox'
+                    password = mapboxToken
+                }
+                authentication { basic(BasicAuthentication) }
+            }
+        }
+    }
+}
+
+// Some third-party modules declare their own repositories; append Mapbox repo to all subprojects as a safeguard
+subprojects { subProj ->
+    subProj.repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        def mapboxToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+        if (!mapboxToken && rootProject.hasProperty('MAPBOX_DOWNLOADS_TOKEN')) {
+            mapboxToken = rootProject.property('MAPBOX_DOWNLOADS_TOKEN')
+        }
+        if (mapboxToken) {
+            maven {
+                url 'https://api.mapbox.com/downloads/v2/releases/maven'
+                credentials {
+                    username = 'mapbox'
+                    password = mapboxToken
+                }
+                authentication { basic(BasicAuthentication) }
+            }
+        }
+    }
+}

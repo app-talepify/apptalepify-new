@@ -1,0 +1,262 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===== Helper Functions - Firebase Auth Integration =====
+    
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    
+    function isDocumentOwner() {
+      return isAuth() && request.auth.uid == resource.data.uid;
+    }
+    
+    function isUserOwner() {
+      return isAuth() && request.auth.uid == resource.data.userId;
+    }
+    
+    function hasCustomClaim(claim) {
+      return isAuth() && request.auth.token[claim] == true;
+    }
+    
+    function isAdmin() {
+      return hasCustomClaim('admin') || hasCustomClaim('superAdmin');
+    }
+    
+    function isValidUser() {
+      return isAuth() && request.auth.token.phone_verified == true;
+    }
+    
+    // Data validation helpers
+    function isValidPhoneNumber(phone) {
+      return phone is string && phone.matches('^\\+[1-9]\\d{1,14}$');
+    }
+    
+    function isValidUID(uid) {
+      return uid is string && uid.size() > 10 && uid.size() < 50;
+    }
+    
+    // ===== Users Collection =====
+    match /users/{userId} {
+      // Create: authenticated, phone verified, valid UID, kendi UID'si
+      allow create: if isValidUser() && 
+                      isOwner(userId) && 
+                      isValidUID(userId) &&
+                      request.resource.data.uid == userId &&
+                      isValidPhoneNumber(request.resource.data.phoneNumber);
+      
+      // Read: kendi profilini okuyabilir + username kontrolü için username field'ını sorgulayabilir + public profil görüntüleme
+      // YENİ KURAL: Oturum açmış her kullanıcı, başka bir kullanıcının profilini okuyabilir.
+      allow read: if isOwner(userId) || 
+                    isAuth() ||
+                    (isAuth() && request.query.limit == 1) ||
+                    // Public profil görüntüleme için web sitesi erişimi
+                    (!isAuth() && resource.data.isPublic == true);
+      
+      // List: username sorguları için public profilleri listele (web sitesi için)
+      allow list: if !isAuth();
+      
+      // Update: sadece kendi profilini güncelleyebilir, kritik alanları korur
+      allow update: if isOwner(userId) && 
+                      request.resource.data.uid == resource.data.uid &&
+                      request.resource.data.phoneNumber == resource.data.phoneNumber;
+      
+      // Delete: sadece kendi hesabını silebilir
+      allow delete: if isOwner(userId);
+
+      // Sub-collection for subscription history
+      match /subscriptionHistory/{historyId} {
+        // Read: Sadece kullanıcının kendisi kendi abonelik geçmişini okuyabilir.
+        // List: Sadece kullanıcının kendisi kendi abonelik geçmişini listeleyebilir.
+        allow read: if isOwner(userId);
+        
+        // Create/Update/Delete: Client'tan yazılamaz, sadece sunucu (admin SDK) yazabilir.
+        allow write: if false;
+      }
+    }
+    // ===== Portfolios Collection =====
+    match /portfolios/{document} {
+      // Read: yayınlanmış portfolyoları herkes, taslakları sadece sahip görebilir
+      allow read: if resource.data.isPublished == true || 
+                    (isValidUser() && isUserOwner());
+      
+      // Create: authenticated user, phone verified, kendi UID'si ile
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.userId &&
+                      isValidUID(request.resource.data.userId);
+      
+      // Update: sadece sahip güncelleyebilir, userId değiştiremez
+      allow update: if isValidUser() && 
+                      isUserOwner() &&
+                      request.resource.data.userId == resource.data.userId;
+      
+      // Delete: sadece sahip silebilir
+      allow delete: if isValidUser() && isUserOwner();
+    }
+    
+    // ===== Requests Collection =====
+    match /requests/{document} {
+      // Read: sahibi veya yayınlanmış + havuza açık talepler
+      allow read: if (isValidUser() && isUserOwner()) ||
+                   (resource.data.isPublished == true && resource.data.publishToPool == true);
+
+      // Write: sadece sahibi düzenleyebilir
+      allow write: if isValidUser() && isUserOwner();
+      
+      // Create: authenticated user, phone verified, kendi UID'si ile
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.userId &&
+                      isValidUID(request.resource.data.userId);
+      
+      // Delete: sadece sahip silebilir
+      allow delete: if isValidUser() && isUserOwner();
+    }
+    
+    // ===== Permission Requests Collection =====
+    match /permissionRequests/{document} {
+      // Read: requester veya portfolio owner okuyabilir
+      allow read: if isValidUser() && 
+                    (request.auth.uid == resource.data.requesterId || 
+                     request.auth.uid == resource.data.portfolioOwnerId);
+      
+      // Write: sadece sahip güncelleyebilir
+      allow write: if isValidUser() && 
+                     (request.auth.uid == resource.data.requesterId || 
+                      request.auth.uid == resource.data.portfolioOwnerId);
+      
+      // Create: authenticated user oluşturabilir
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.requesterId;
+      
+      // Delete: requester veya portfolio owner silebilir
+      allow delete: if isValidUser() && 
+                      (request.auth.uid == resource.data.requesterId || 
+                       request.auth.uid == resource.data.portfolioOwnerId);
+    }
+    
+    // ===== Custom Portfolio Shares Collection =====
+    match /customPortfolioShares/{document} {
+      // Read: herkes paylaşılan portfolyoları görebilir (public)
+      allow read: if true;
+      
+      // Write: sadece sahip güncelleyebilir, sharerUserId değiştiremez
+      allow write: if isValidUser() && 
+                     request.auth.uid == resource.data.sharerUserId &&
+                     request.resource.data.sharerUserId == resource.data.sharerUserId;
+      
+      // Create: authenticated user oluşturabilir
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.sharerUserId;
+      
+      // Delete: sadece sahip silebilir
+      allow delete: if isValidUser() && 
+                      request.auth.uid == resource.data.sharerUserId;
+    }
+    
+    // ===== Notifications Collection =====
+    match /notifications/{document} {
+      // Read: sadece kendi bildirimlerini görebilir
+      allow read: if isValidUser() && isUserOwner();
+      // Client write kapalı; sadece sunucu yazabilir
+      allow write: if false;
+    }
+    
+    // ===== User Devices Collection =====
+    match /userDevices/{userId} {
+      // Sadece kendi cihaz bilgilerini yönetebilir
+      allow read, write, create, delete: if isValidUser() && isOwner(userId);
+    }
+    
+    // ===== Security Data Collection =====
+    match /securityData/{userId} {
+      // Sadece kendi güvenlik verilerini yönetebilir
+      allow read, write, create, delete: if isValidUser() && isOwner(userId);
+    }
+    
+    // ===== User Security Collection =====
+    match /userSecurity/{userId} {
+      // Sadece kendi güvenlik ayarlarını yönetebilir
+      allow read, write, create, delete: if isValidUser() && isOwner(userId);
+    }
+    
+    // ===== News Collection (Public) =====
+    match /news/{document} {
+      // Herkes haberleri okuyabilir (authenticated olmasına gerek yok)
+      allow read: if true;
+      // Sadece admin/system yazabilir (GitHub Actions admin SDK kullanır)
+      allow write, create, delete: if isAdmin();
+    }
+    
+    // ===== Appointments Collection =====
+    match /appointments/{document} {
+      // Read/Write: sadece kendi randevularını yönetebilir
+      allow read, write: if isValidUser() && isUserOwner();
+      
+      // Create: authenticated user, phone verified, kendi UID'si ile
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.userId &&
+                      isValidUID(request.resource.data.userId);
+      
+      // Delete: sadece sahip silebilir
+      allow delete: if isValidUser() && isUserOwner();
+    }
+    
+    // ===== Notes Collection (Voice & Text Notes) =====
+    match /notes/{document} {
+      // Read: sadece kendi notlarını görebilir
+      allow read: if isValidUser() && isUserOwner();
+      
+      // Create: authenticated user, phone verified, kendi UID'si ile
+      // Not tipi 'audio' veya 'text' olmalı, 1 haftalık expiresAt zorunlu
+      allow create: if isValidUser() && 
+                      request.auth.uid == request.resource.data.userId &&
+                      isValidUID(request.resource.data.userId) &&
+                      (request.resource.data.type == 'audio' || request.resource.data.type == 'text') &&
+                      request.resource.data.expiresAt is timestamp;
+      
+      // Update: sahip güncelleyebilir (kullanılmıyor şu an)
+      allow update: if isValidUser() && isUserOwner();
+      
+      // Delete: sadece sahip silebilir
+      allow delete: if isValidUser() && isUserOwner();
+    }
+    
+    // ===== OTP Data Collection (Server-side only) =====
+    match /otpData/{document} {
+      // OTP verileri sadece server tarafından yönetilir
+      allow read, write, create, delete: if isAdmin();
+    }
+    
+    // ===== Rate Limits Collection (Server-side only) =====
+    match /rateLimits/{document} {
+      // Rate limit verileri sadece server tarafından yönetilir
+      allow read, write, create, delete: if isAdmin();
+    }
+    
+    // ===== Referral Codes Collection =====
+    match /referralCodes/{document} {
+      // Create: Kullanıcı sadece kendi adına bir referans kodu oluşturabilir.
+      allow create: if isValidUser() && request.auth.uid == request.resource.data.userId;
+      
+      // Read: Oturum açmış herkes referans kodlarını sorgulayabilir (kayıt sırasında doğrulama için).
+      allow read: if isAuth();
+      
+      // Update/Delete: Referans kodları client tarafından güncellenemez veya silinemez.
+      allow update, delete: if false;
+    }
+    
+    // ===== Referrals Collection =====
+    match /referrals/{document} {
+      // Read: Kullanıcılar sadece kendilerinin dahil olduğu referansları görebilir.
+      allow read: if isValidUser() && 
+                    (request.auth.uid == resource.data.referrerId || request.auth.uid == resource.data.referredId);
+      
+      // Create/Update/Delete: Referans kayıtları sadece sunucu tarafından oluşturulup güncellenebilir.
+      allow write: if false;
+    }
+  }
+}

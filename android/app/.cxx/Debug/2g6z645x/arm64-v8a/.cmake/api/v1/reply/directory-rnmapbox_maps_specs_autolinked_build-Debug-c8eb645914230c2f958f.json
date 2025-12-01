@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "rnmapbox_maps_specs_autolinked_build",
+		"source" : "C:/Dev/TalepifyApp12/node_modules/@rnmapbox/maps/android/build/generated/source/codegen/jni"
+	}
+}

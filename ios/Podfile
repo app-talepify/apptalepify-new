@@ -1,0 +1,48 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+# Yüksek Firebase, Hermes ve react-native-screens sürümleri için iOS minimum versiyonunu güncelliyoruz.
+# Bu, Android tarafını etkilemez; sadece iOS build hedefine uygulanır.
+platform :ios, '15.1'
+
+# Firebase'in Swift tabanlı pod'ları için static framework kullanıyoruz.
+use_frameworks! :linkage => :static
+
+prepare_react_native_project!
+
+target 'TalepifyApp' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  target 'TalepifyAppTests' do
+    inherit! :complete
+    # Pods for testing
+  end
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    # Xcode 16 ile birlikte tüm pod hedeflerinin minimum iOS sürümünü
+    # en az 12+ olacak şekilde güncelliyoruz (biz 15.1 kullanıyoruz).
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+      end
+    end
+  end
+end

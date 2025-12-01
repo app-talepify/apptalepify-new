@@ -1,0 +1,26 @@
+name: News Cron
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  fetch-and-write:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        run: npm ci
+      - name: Run fetcher
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          NEWS_FEEDS_TR: |
+            https://news.google.com/rss/search?q=emlak+OR+%22konut%20kredisi%22+OR+%22kentsel%20d%C3%B6n%C3%BC%C5%9F%C3%BCm%22+OR+TOK%C4%B0&hl=tr&gl=TR&ceid=TR:tr
+        run: node scripts/news-fetcher.js

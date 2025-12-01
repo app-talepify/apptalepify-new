@@ -1,0 +1,28 @@
+rootProject.name = 'TalepifyApp'
+apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// Ensure repositories for dependency resolution (AGP 8+) include Mapbox
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        // Mapbox private downloads repo (requires MAPBOX_DOWNLOADS_TOKEN)
+        // Mapbox private downloads repo (requires MAPBOX_DOWNLOADS_TOKEN)
+        def mbToken = providers.gradleProperty('MAPBOX_DOWNLOADS_TOKEN')
+            .orElse(providers.environmentVariable('MAPBOX_DOWNLOADS_TOKEN'))
+        if (mbToken.present) {
+            maven {
+                url 'https://api.mapbox.com/downloads/v2/releases/maven'
+                authentication { basic(BasicAuthentication) }
+                credentials {
+                    username = 'mapbox'
+                    password = mbToken.get()
+                }
+            }
+        }
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+    }
+}

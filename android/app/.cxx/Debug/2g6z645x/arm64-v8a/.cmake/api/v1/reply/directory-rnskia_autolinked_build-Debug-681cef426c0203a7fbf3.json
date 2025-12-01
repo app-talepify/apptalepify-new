@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "rnskia_autolinked_build",
+		"source" : "C:/Dev/TalepifyApp12/node_modules/@shopify/react-native-skia/android/build/generated/source/codegen/jni"
+	}
+}

@@ -1,0 +1,25 @@
+declare module '@env' {
+  export const OTP_PROVIDER: string;
+  export const NETGSM_USER: string;
+  export const NETGSM_PASS: string;
+  export const NETGSM_HEADER: string;
+  export const APP_SIGNING_SECRET: string;
+  export const OTP_TTL_SECONDS: string;
+  export const OTP_RESEND_COOLDOWN_SECONDS: string;
+  export const OTP_MAX_ATTEMPTS: string;
+  export const OTP_RATE_PER_MINUTE: string;
+  export const OTP_RATE_PER_HOUR: string;
+  export const OTP_RATE_PER_DAY: string;
+  export const OTP_DRY_RUN: string;
+  export const API_BASE_URL: string;
+  export const AUTH_CUSTOM_TOKEN_ENABLED: string;
+  export const NOTIF_ENABLED: string;
+  export const ANDROID_DEFAULT_CHANNEL_ID: string;
+  export const SMS_API_BASE_URL: string;
+  export const MAPBOX_ACCESS_TOKEN: string;
+  export const MAPBOX_STYLE_URL: string;
+  export const MAPBOX_PUBLIC_TOKEN: string;
+  export const USE_BUNNY: string;
+  export const BUNNY_CDN_HOST: string;
+  export const MEDIA_API_BASE: string;
+}

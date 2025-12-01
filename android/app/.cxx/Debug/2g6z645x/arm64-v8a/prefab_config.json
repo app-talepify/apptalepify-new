@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "prefabPath": "C:\\Dev\\GradleCache\\caches\\modules-2\\files-2.1\\com.google.prefab\\cli\\2.1.0\\aa32fec809c44fa531f01dcfb739b5b3304d3050\\cli-2.1.0-all.jar",
+  "packages": [
+    "C:\\Dev\\GradleCache\\caches\\transforms-4\\eef4ec373b679270756af9bc28d1c2f8\\transformed\\jetified-react-android-0.74.5-debug\\prefab",
+    "C:\\Dev\\GradleCache\\caches\\transforms-4\\1e2942aced45302f25759efd77e64cf4\\transformed\\jetified-hermes-android-0.74.5-debug\\prefab",
+    "C:\\Dev\\TalepifyApp12\\node_modules\\@shopify\\react-native-skia\\android\\build\\intermediates\\prefab_package\\debug\\prefab",
+    "C:\\Dev\\GradleCache\\caches\\transforms-4\\db09c89b9f519096f5824dadcd3bc83c\\transformed\\jetified-fbjni-0.6.0\\prefab"
+  ]
+}
